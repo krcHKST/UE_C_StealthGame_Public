@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Interface/DamageModifierInterface.h"
 #include "HealthComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthChanged, float, Health, float, MaxHealth);
 DECLARE_DELEGATE(FHealthDelegate);
 /**
 *親のTakeDamageにAddDynamicしてHealthを減らし、0になった時イベントを発火する
@@ -31,6 +33,8 @@ public:
 	UHealthComponent();
 
 	FHealthDelegate DeathEvent;
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnHealthChanged OnHealthChanged;
 
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -40,5 +44,7 @@ public:
 	UFUNCTION(BlueprintPure)
 	float GetHealth() { return Health; }
 	UFUNCTION(BlueprintPure)
-	float GetMaxHealth() { return MaxHealth; }
+	float GetMaxHealth() const { return MaxHealth; }
+	UFUNCTION(BlueprintPure)
+	float GetHealthPercent() const;
 };

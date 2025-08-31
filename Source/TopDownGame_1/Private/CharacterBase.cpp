@@ -23,13 +23,28 @@ ACharacterBase::ACharacterBase()
 void ACharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
-	HealthComponent->DeathEvent.BindUObject(this, &ACharacterBase::DeathReaction);
+
+	if (HealthComponent)
+	{
+		HealthComponent->DeathEvent.BindUObject(this, &ACharacterBase::DeathReaction);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("CharacterBase::BeginPlay_HealthComponent is null: %s"), *GetName());
+	}
+
 	OnDestroyed.AddDynamic(this, &ACharacterBase::HandleOnDestroyed);
 
 	//‰Šú•ŠíƒZƒbƒg
 	if (DefaultHoldWeapon) {
-		AWeaponBase* holdWeapon = GetWorld()->SpawnActor<AWeaponBase>(DefaultHoldWeapon);
-		holdWeapon->GetPickUpComponent()->PickedUpByCharacter(this);
+		if (UWorld* World = GetWorld())
+		{
+			AWeaponBase* holdWeapon = World->SpawnActor<AWeaponBase>(DefaultHoldWeapon);
+			if (holdWeapon && holdWeapon->GetPickUpComponent())
+			{
+				holdWeapon->GetPickUpComponent()->PickedUpByCharacter(this);
+			}
+		}
 	}
 }
 
@@ -54,10 +69,20 @@ void ACharacterBase::EndFire()
 	EquipmentComponent->EndFire();
 }
 
+void ACharacterBase::Reload()
+{
+	EquipmentComponent->Reload();
+}
+
 float ACharacterBase::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, class AActor* DamageCauser)
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	UKismetSystemLibrary::PrintString(this, "Take Damage Character", true, true, FColor::Cyan, 2.f, TEXT("None"));
+	//UKismetSystemLibrary::PrintString(this, "Take Damage Character", true, true, FColor::Cyan, 2.f, TEXT("None"));
+	
+	if (DamageSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, DamageSound, GetActorLocation());
+	}
 	return DamageAmount;
 }
 

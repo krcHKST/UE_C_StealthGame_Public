@@ -37,25 +37,38 @@ AProjectileBase* AProjectilePoolManager::GenerateProjectile(TSubclassOf<AProject
     return nullptr;
 }
 
-AProjectileBase* AProjectilePoolManager::GetProjectileFromPool(TSubclassOf<AProjectileBase> projectileClass) 
+AProjectileBase* AProjectilePoolManager::GetProjectileFromPool(TSubclassOf<AProjectileBase> projectileClass)
 {
-    if (!projectileClass) return nullptr; 
-
-    TArray<AProjectileBase*>& pool = ProjectilePools.FindOrAdd(projectileClass); 
-
-    for (AProjectileBase* projectile : pool) 
+    if (!projectileClass) return nullptr;
+    TArray<AProjectileBase*>& pool = ProjectilePools.FindOrAdd(projectileClass);
+    AProjectileBase* projectileToUse = nullptr;
+    //óòópâ¬î\Ç»íeÇíTÇ∑
+    for (AProjectileBase* projectile : pool)
     {
-        if (!projectile->IsActorTickEnabled()) 
+        if (projectile && !projectile->IsActorTickEnabled())
         {
-            projectile->SetActorEnableCollision(true); 
-            projectile->SetActorHiddenInGame(false); 
-            projectile->SetActorTickEnabled(true); 
-            return projectile; 
+            projectileToUse = projectile;
+            break;
         }
     }
 
-    // ãÛÇ´Ç™Ç»ÇØÇÍÇŒêVãKê∂ê¨
-    return GenerateProjectile(projectileClass,pool);
+    //å©Ç¬Ç©ÇÁÇ»Ç©Ç¡ÇΩÇÁêVãKê∂ê¨
+    if (!projectileToUse)
+    {
+        projectileToUse = GenerateProjectile(projectileClass, pool);
+    }
+    if (projectileToUse)
+    {
+        //ÉAÉNÉeÉBÉuâª
+        projectileToUse->SetActorEnableCollision(true);
+        projectileToUse->SetActorHiddenInGame(false);
+        projectileToUse->SetActorTickEnabled(true);
+        
+        return projectileToUse;
+    }
+
+    //ê∂ê¨Ç…Ç‡é∏îsÇµÇΩèÍçá
+    return nullptr;
 }
 
 void AProjectilePoolManager::ReturnProjectileToPool(AProjectileBase* projectile) 

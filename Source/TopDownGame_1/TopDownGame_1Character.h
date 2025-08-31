@@ -46,7 +46,9 @@ protected:
 	class APlayerController* PlayerController;
 	//UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* SkeletalMesh;
-
+	UPROPERTY()
+	FTimerHandle DeathTimerHandle;
+	UPROPERTY()
 	class UHealthComponent* HealthComp;
 private:
 	UPROPERTY(EditAnywhere, Category = "Status")

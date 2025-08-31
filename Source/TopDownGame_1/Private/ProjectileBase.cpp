@@ -14,6 +14,7 @@ AProjectileBase::AProjectileBase()
     PrimaryActorTick.bCanEverTick = true;
 
     CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
+    RootComponent = CollisionComp;
     CollisionComp->InitSphereRadius(5.0f);
     CollisionComp->BodyInstance.SetCollisionProfileName("Projectile");
     CollisionComp->SetWalkableSlopeOverride(FWalkableSlopeOverride(WalkableSlope_Unwalkable, 0.f));

@@ -8,6 +8,7 @@
 
 class AWeaponBase;
 class UHealthComponent;
+class USoundBase;
 UCLASS()
 class TOPDOWNGAME_1_API ACharacterBase : public ACharacter
 {
@@ -28,6 +29,9 @@ protected:
 	UHealthComponent* HealthComponent;
 	UPROPERTY(EditAnywhere)
 	FName EquipSocketName;
+	UPROPERTY(EditDefaultsOnly, Category = "Sound")
+	USoundBase* DamageSound;
+
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, class AActor* DamageCauser) override;
 public:	
 	virtual void BeginPlay() override;
@@ -42,6 +46,8 @@ public:
 	virtual void Fire();
 	UFUNCTION()
 	virtual void EndFire();
+	UFUNCTION()
+	virtual void Reload();
 	UFUNCTION()
 	virtual void DeathReaction();
 	UFUNCTION()

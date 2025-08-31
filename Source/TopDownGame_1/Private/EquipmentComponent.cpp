@@ -2,7 +2,6 @@
 
 
 #include "EquipmentComponent.h"
-#include "WeaponComponent.h"
 #include "WeaponBase.h"
 #include "PickUpComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -41,7 +40,6 @@ void UEquipmentComponent::Equip(AWeaponBase* weapon, USkeletalMeshComponent* att
 	{
 		FString OwnerName = ownerActor->GetName();
 
-		// Print the owner's name on the screen
 		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Owner: %s"), *OwnerName), true, true, FLinearColor::Green, 15.0f);
 	}
 	else
@@ -68,27 +66,9 @@ void UEquipmentComponent::Equip(AWeaponBase* weapon, USkeletalMeshComponent* att
 	{
 		EquipWeapon->AttachToComponent(attachMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, socketName);
 	}
-	//“o˜^ƒCƒxƒ“ƒgŒÄ‚Ño‚µ
+	//(ŠŽŽÒ‚©‚ç‚Ì)“o˜^ƒCƒxƒ“ƒgŒÄ‚Ño‚µ
 	if (EquipEvent.IsBound())EquipEvent.Execute();
 }
-
-//void UEquipmentComponent::Equip(AWeaponBase* weapon, USkeletalMeshComponent* attachMesh, FName socketName)
-//{
-//	if (EquipWeapon)
-//	{
-//		EquipWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-//	}
-//	EquipWeapon = weapon;
-//	EquipWeapon->SetOwner(GetOwner());
-//	if (socketName.IsNone()) {
-//		EquipWeapon->AttachToActor(GetOwner(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-//	}
-//	else{
-//		EquipWeapon->AttachToComponent(attachMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, socketName);
-//	}
-//	if(EquipEvent.IsBound())
-//	EquipEvent.Execute();
-//}
 
 void UEquipmentComponent::SwitchWeapon(int num)
 {
@@ -105,6 +85,12 @@ void UEquipmentComponent::EndFire()
 {
 	if (!EquipWeapon)return;
 	EquipWeapon->EndFire();
+}
+
+void UEquipmentComponent::Reload()
+{
+	if (!EquipWeapon)return;
+	EquipWeapon->RequestReload();
 }
 
 void UEquipmentComponent::Drop()

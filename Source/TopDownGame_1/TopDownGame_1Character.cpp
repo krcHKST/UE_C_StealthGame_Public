@@ -117,9 +117,6 @@ void ATopDownGame_1Character::DeathReaction()
 
 	// カプセルを無効化
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	FTimerHandle TimerHandle;//レベル読み込みなおす
-	GetWorldTimerManager().SetTimer(TimerHandle, this, &ATopDownGame_1Character::ReloadLevel, 5.0f, false);
 }
 
 void ATopDownGame_1Character::ReloadLevel()

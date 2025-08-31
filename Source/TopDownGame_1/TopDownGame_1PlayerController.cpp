@@ -20,23 +20,30 @@
 ATopDownGame_1PlayerController::ATopDownGame_1PlayerController()
 {
 	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
 	DefaultMouseCursor = EMouseCursor::Default;
 	CachedDestination = FVector::ZeroVector;
 	FollowTime = 0.f;
+    
 }
 
 void ATopDownGame_1PlayerController::BeginPlay()
 {
-	// Call the base class  
 	Super::BeginPlay();
 
-	//Add Input Mapping Context
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 	{
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	}
-
 	PlayerCharacter = Cast<ATopDownGame_1Character>(UGameplayStatics::GetPlayerCharacter(this->GetWorld(), 0));
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);//←明示的にオフ
+	SetInputMode(InputMode);
+
+	bShowMouseCursor = true;//念のため再設定
+	SetShowMouseCursor(true);
 }
 
 void ATopDownGame_1PlayerController::SetupInputComponent()
@@ -59,11 +66,13 @@ void ATopDownGame_1PlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Completed, this, &ATopDownGame_1PlayerController::OnTouchReleased);
 		EnhancedInputComponent->BindAction(SetDestinationTouchAction, ETriggerEvent::Canceled, this, &ATopDownGame_1PlayerController::OnTouchReleased);
 
-		//設定　キーボードインプット
+		//設定　キーボード,マウスインプット
 		//EnhancedInputComponent->BindAction(SetDestinationKeyBoardAction,ETriggerEvent::Started,this,&ATopDownGame_1PlayerController::OnInputStarted);
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ATopDownGame_1PlayerController::Move);
-		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ATopDownGame_1PlayerController::OnAttackPressed);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ATopDownGame_1PlayerController::OnAttackPressed);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ATopDownGame_1PlayerController::OnAttackTriggered);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &ATopDownGame_1PlayerController::OnAttackReleased);
+		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ATopDownGame_1PlayerController::OnReloadPressed);
 	}
 	else
 	{
@@ -168,10 +177,20 @@ void ATopDownGame_1PlayerController::OnAttackPressed()
 	PlayerCharacter->Fire();
 }
 
+void ATopDownGame_1PlayerController::OnAttackTriggered()
+{
+	
+}
+
 void ATopDownGame_1PlayerController::OnAttackReleased()
 {
-	UKismetSystemLibrary::PrintString(this, "Attack Released", true, true, FColor::Cyan, 2.f, TEXT("None"));
+	//UKismetSystemLibrary::PrintString(this, "Attack Released", true, true, FColor::Cyan, 2.f, TEXT("None"));
 	PlayerCharacter->EndFire();
+}
+
+void ATopDownGame_1PlayerController::OnReloadPressed()
+{
+	PlayerCharacter->Reload();
 }
 
 void ATopDownGame_1PlayerController::GameHasEnded(class AActor* EndGameFocus, bool bIsWinner)

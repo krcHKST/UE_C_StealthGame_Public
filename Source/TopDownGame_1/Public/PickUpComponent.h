@@ -16,21 +16,30 @@ class TOPDOWNGAME_1_API UPickUpComponent : public UBoxComponent
 	GENERATED_BODY()
 
 public:	
-
 	UPROPERTY(BlueprintAssignable, Category = "Interaction")
 	FOnPickUp OnPickUp;
 	// Sets default values for this component's properties
 	UPickUpComponent();
 	UFUNCTION()
 	void PickedUpByCharacter(ACharacterBase* character);
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void EnablePickup();
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void DisablePickup();
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly)
+	float DelaySeconds_EnablePickup;
+
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 	//virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	UFUNCTION()
 	void OnBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void HandleOwnerDropped();
+	FTimerHandle TimerHandle_EnablePickup;
+	UPROPERTY(EditAnywhere)
+	bool bEnableEffect;
 	
-	
-
-		
 };

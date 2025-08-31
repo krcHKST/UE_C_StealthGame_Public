@@ -24,4 +24,9 @@ protected:
 
 	UPROPERTY()
 	UUserWidget* CurrentWidget;
+
+private:
+	FTimerHandle RestartTimerHandle;
+	//ƒŒƒxƒ‹‚ğƒŠƒ[ƒh
+	void RestartLevel();
 };

@@ -7,6 +7,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
+#include "GameFramework/PlayerController.h"
 
 AMainGameMode::AMainGameMode()
 {
@@ -59,9 +60,24 @@ void AMainGameMode::BeginPlay()
 
 void AMainGameMode::PawnKilled(APawn* pawnKilled)
 {
-	APlayerController* playerController = Cast<APlayerController>(pawnKilled->GetController());
-	if (playerController != nullptr)
+	// 死亡したのがプレイヤーかを確認
+	APlayerController* PlayerController = Cast<APlayerController>(pawnKilled->GetController());
+	if (PlayerController != nullptr)
 	{
-		playerController->GameHasEnded(nullptr,false);
+		//プレイヤーの入力を無効化
+		PlayerController->DisableInput(PlayerController);
+		//5秒後にRestartLevelを呼び出すタイマーを設定
+		GetWorldTimerManager().SetTimer(RestartTimerHandle, this, &AMainGameMode::RestartLevel, 5.0f, false);
+	}
+}
+
+void AMainGameMode::RestartLevel()
+{
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		FString CurrentLevelName = UGameplayStatics::GetCurrentLevelName(World);
+		//現在のレベルを開く
+		UGameplayStatics::OpenLevel(World, FName(*CurrentLevelName));
 	}
 }

@@ -20,12 +20,4 @@ class AWeapon_Rifle : public AWeaponBase
 public:
 	void Fire() override;
 	void EndFire() override;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
-	FVector MuzzleOffset;
-	UPROPERTY(EditAnywhere)
-	FRotator ShotDirection;
-	UPROPERTY(EditDefaultsOnly)
-	FName SocketName;
-	UPROPERTY(EditDefaultsOnly)
-	float DamageAmount;
 };

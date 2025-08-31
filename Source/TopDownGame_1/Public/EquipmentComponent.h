@@ -37,6 +37,8 @@ public:
 	UFUNCTION()
 	void EndFire();
 	UFUNCTION()
+	void Reload();
+	UFUNCTION()
 	void Drop();
 	UFUNCTION()
 	void DiscardWeapon();

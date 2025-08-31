@@ -3,127 +3,122 @@
 #include "AIC_EnemyBase.h"
 #include "TopDownGame_1Character.h"
 #include "EnemyBaseCharacter.h"
-#include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Perception/AIPerceptionComponent.h"
-#include "Private/Enum/EEnemyState.h"
+#include "BehaviorTree/BehaviorTree.h"
+#include "BehaviorTree/BehaviorTreeComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Public/Enum/Enemy/EEnemyState.h"
 
-
-AAIC_EnemyBase::AAIC_EnemyBase(const class FObjectInitializer& ObjectInitializer)
+AAIC_EnemyBase::AAIC_EnemyBase(const FObjectInitializer& ObjectInitializer)
 {
 	BehaviorComp = ObjectInitializer.CreateDefaultSubobject<UBehaviorTreeComponent>(this, TEXT("BehaviorComp"));
 	BlackboardComp = ObjectInitializer.CreateDefaultSubobject<UBlackboardComponent>(this, TEXT("BlackboardComp"));
-
 	AIPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception Component"));
 	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Sight Config"));
-
-	// 作成したビヘイビアツリーを設定
-	ConstructorHelpers::FObjectFinder<UBehaviorTree> BTFinder(TEXT("/Game/AI/BT_EnemyBase.BT_EnemyBase"));
-	BehaviorTree = BTFinder.Object;
-
-	PlayerKeyName = "Player";
-	FindKeyName = "isFind";
-
 }
 
 void AAIC_EnemyBase::BeginPlay()
 {
 	Super::BeginPlay();
-
-	GetAIPerceptionComponent()->RequestStimuliListenerUpdate();
-
 }
-
-//void AAIC_EnemyBase::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//	
-//}
 
 void AAIC_EnemyBase::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	// AIControllerがPawn所持した際にBBとBTを使用
-	BlackboardComp->InitializeBlackboard(*BehaviorTree->BlackboardAsset);
-	BehaviorComp->StartTree(*BehaviorTree);
-
 	OwnerEnemy = Cast<AEnemyBaseCharacter>(InPawn);
+	if (!OwnerEnemy)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Possessed Pawn is not an AEnemyBaseCharacter in %s"), *GetName());
+		return;// 失敗したらAI設定は行わない
+	}
 
-	SightConfig->SightRadius = OwnerEnemy->SightRadius;
-	SightConfig->LoseSightRadius = OwnerEnemy->LoseSightRadius;
-	SightConfig->PeripheralVisionAngleDegrees = OwnerEnemy->AngleDegrees;
-	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+	//BPでBehaviorTreeアセット設定したか確認
+	if (BehaviorTree)
+	{
+		//BB.BT開始
+		BlackboardComp->InitializeBlackboard(*BehaviorTree->BlackboardAsset);
+		BehaviorComp->StartTree(*BehaviorTree);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("BehaviorTree is not assigned in AI Controller: %s"), *GetName());
+	}
 
-	AIPerception->ConfigureSense(*SightConfig);
-	AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
+	if (IsValid(AIPerception))
+	{
+		//プロパティから視覚パラメータ設定
+		SightConfig->SightRadius = this->SightRadius;
+		SightConfig->LoseSightRadius = this->LoseSightRadius;
+		SightConfig->PeripheralVisionAngleDegrees = this->PeripheralVisionAngleDegrees;
 
-	UAIPerceptionSystem::RegisterPerceptionStimuliSource(this, SightConfig->GetSenseImplementation(), InPawn);
-	
-	AIPerception->OnPerceptionUpdated.AddDynamic(this, &AAIC_EnemyBase::SenseStuff);
+		SightConfig->DetectionByAffiliation.bDetectEnemies = true;
+		SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
+		SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
 
-	UKismetSystemLibrary::PrintString(this, "Enemy Posses", true, true, FColor::Cyan, 2.f, TEXT("None"));
+		AIPerception->ConfigureSense(*SightConfig);
+		//視覚を主要なSenseとして設定
+		AIPerception->SetDominantSense(SightConfig->GetSenseImplementation());
 
-	GetAIPerceptionComponent()->RequestStimuliListenerUpdate();
+		UAIPerceptionSystem::RegisterPerceptionStimuliSource(this, SightConfig->GetSenseImplementation(), InPawn);
+		//OnTargetSensedバインド
+		AIPerception->OnTargetPerceptionUpdated.AddDynamic(this, &AAIC_EnemyBase::OnTargetSensed);
 
+		//更新（これ大事）
+		GetAIPerceptionComponent()->RequestStimuliListenerUpdate();
+	}
 }
 
 void AAIC_EnemyBase::OnUnPossess()
 {
 	Super::OnUnPossess();
-	BehaviorComp->StopTree();
-}
 
-void AAIC_EnemyBase::SenseStuff(const TArray<AActor*>& SenseActors)
-{
-	SetPlayerKey(Cast<ATopDownGame_1Character>(UGameplayStatics::GetPlayerCharacter(this->GetWorld(), 0)));
-
-	if (SenseActors.Num() == 0) return;
-
-	int actorsNum = SenseActors.Num();
-	ATopDownGame_1Character* player = Cast<ATopDownGame_1Character>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
-
-	UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("actorsNum: %d"), actorsNum), true, true, FColor::Cyan, 2.f, TEXT("None"));
-
-	if (!player) return;
-
-	for (int i = 0; i < actorsNum; i++)
+	//ビヘイビアツリー停止
+	if (BehaviorComp && BehaviorComp->IsRunning())
 	{
-		if (!SenseActors[i]) continue;
-
-		if (SenseActors[i] == player)
-		{
-			OwnerEnemy->isFind = true;
-			OwnerEnemy->EnemyState = EEnemyState::Find;
-			SetPlayerKey(player);
-			break;
-		}
+		BehaviorComp->StopTree();
 	}
-}
-
-
-void AAIC_EnemyBase::SetPlayerKey(ACharacter* player)
-{
-	ensure(BlackboardComp);
-
-	// ブラックボードで作成したPlayerというキーにプレイヤー情報を入れる
-	BlackboardComp->SetValueAsObject(PlayerKeyName, player);
-	BlackboardComp->SetValueAsBool(FindKeyName, true);
-}
-
-
-ATopDownGame_1Character* AAIC_EnemyBase::GetPlayerKey()
-{
-	ensure(BlackboardComp);
-
-	return Cast<ATopDownGame_1Character>(BlackboardComp->GetValueAsObject(PlayerKeyName));
 }
 
 void AAIC_EnemyBase::GetActorEyesViewPoint(FVector& out_Location, FRotator& out_Rotation) const
 {
-	GetHeadLocRot(out_Location,out_Rotation);
+	//BP側で目の位置を定義している
+	GetHeadSocketLocationAndRotation(out_Location, out_Rotation);
+}
+
+void AAIC_EnemyBase::OnTargetSensed(AActor* SensedActor, FAIStimulus Stimulus)
+{
+	//プレイヤーか確認
+	ATopDownGame_1Character* PlayerCharacter = Cast<ATopDownGame_1Character>(SensedActor);
+	if (!PlayerCharacter || !BlackboardComp)
+	{
+		return; 
+	}
+
+	if (Stimulus.WasSuccessfullySensed())
+	{
+		//プレイヤー発見時の処理 
+		BlackboardComp->SetValueAsObject(PlayerKeyName, PlayerCharacter);
+		BlackboardComp->SetValueAsBool(FindKeyName, true);
+
+		BlackboardComp->SetValueAsEnum(TEXT("AIState"), (uint8)EEnemyState::Find);
+		/*if (IsValid(OwnerEnemy))
+		{
+			OwnerEnemy->EnemyState = EEnemyState::Find;
+		}*/
+	}
+	else
+	{
+		//プレイヤーを見失った時の処理
+		AEnemyBaseCharacter* enemyCharacter = Cast<AEnemyBaseCharacter>(GetPawn());
+		if (enemyCharacter)
+		{
+			enemyCharacter->EndFire();//この処理はAIの挙動が増えたらBTTとして移動するかも
+		}
+		BlackboardComp->ClearValue(PlayerKeyName);
+		BlackboardComp->SetValueAsBool(FindKeyName, false);
+
+		BlackboardComp->SetValueAsEnum(TEXT("AIState"), (uint8)EEnemyState::Idle);
+	}
 }

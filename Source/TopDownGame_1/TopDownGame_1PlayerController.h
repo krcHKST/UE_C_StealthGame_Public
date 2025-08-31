@@ -55,6 +55,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* AttackAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ReloadAction;
 protected:
 	/** True if the controlled character should navigate to the mouse cursor. */
 	uint32 bMoveToMouseCursor : 1;
@@ -72,7 +74,9 @@ protected:
 	void OnTouchReleased();
 	void Move(const FInputActionValue& Value);//キーボード系移動
 	void OnAttackPressed();
+	void OnAttackTriggered();
 	void OnAttackReleased();
+	void OnReloadPressed();
 private:
 	FVector CachedDestination;
 

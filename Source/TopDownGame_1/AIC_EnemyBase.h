@@ -4,18 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
-#include "BehaviorTree/BehaviorTree.h"
-#include "BehaviorTree/BehaviorTreeComponent.h"
-#include "BehaviorTree/BlackboardComponent.h"
-#include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AIPerceptionComponent.h"
-#include "GameFramework/Actor.h"
 #include "AIC_EnemyBase.generated.h"
 
+class UBehaviorTree;
+class UBehaviorTreeComponent;
+class UBlackboardComponent;
+class UAISenseConfig_Sight;
+class AEnemyBaseCharacter;
 
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPerceptionUpdatedDelegate, TArray, UpdatedActors);
 /**
- * 
+ * 敵キャラクターのベースとなるAIコントローラー
  */
 UCLASS()
 class TOPDOWNGAME_1_API AAIC_EnemyBase : public AAIController
@@ -23,56 +22,59 @@ class TOPDOWNGAME_1_API AAIC_EnemyBase : public AAIController
 	GENERATED_BODY()
 
 public:
-	AAIC_EnemyBase(const class FObjectInitializer& ObjectInitializer);
+	AAIC_EnemyBase(const FObjectInitializer& ObjectInitializer);
+	UFUNCTION()
+	FName GetPlayerKeyName() { return PlayerKeyName; };
+protected:
+	virtual void BeginPlay() override;
 
-	UFUNCTION(BluePrintCallable)
-	void SetPlayerKey(ACharacter* player);
+	virtual void OnPossess(APawn* InPawn) override;
 
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "PerceptionExtended")
-	void GetHeadLocRot(FVector& out_location, FRotator& out_rotation) const;
+	virtual void OnUnPossess() override;
 
+	// AIの目の位置設定する
 	virtual void GetActorEyesViewPoint(FVector& out_Location, FRotator& out_Rotation) const override;
 
 	UFUNCTION()
-	void SenseStuff(const TArray<AActor*> &SenseActors);
-	UFUNCTION()
-	class ATopDownGame_1Character* GetPlayerKey();
+	void OnTargetSensed(AActor* SensedActor, FAIStimulus Stimulus);
 
-	UPROPERTY()
-	UBehaviorTreeComponent* BehaviorComp;
+	// 頭部の座標と回転を取得するイベント
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Perception")
+	void GetHeadSocketLocationAndRotation(FVector& OutLocation, FRotator& OutRotation) const;
 
-	UPROPERTY()
-	UBlackboardComponent* BlackboardComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UBehaviorTreeComponent> BehaviorComp;
 
-	UPROPERTY(EditDefaultsOnly, Category = AI)
-	FName PlayerKeyName;
-	UPROPERTY(EditDefaultsOnly, Category = AI)
-	FName FindKeyName;
-	UPROPERTY(EditAnywhere, Category = "Perceptions")
-	float SightRadius;
-	UPROPERTY(EditAnywhere,Category = "Perceptions")
-	float LoseSightRadius;
-	UPROPERTY(EditAnywhere, Category = "Perceptions")
-	float AngleDegrees;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UBlackboardComponent> BlackboardComp;
 
-	UPROPERTY(EditAnywhere)
-	class AEnemyBaseCharacter* OwnerEnemy;
-	UPROPERTY(EditDefaultsOnly)
-	UAIPerceptionComponent* AIPerception;
-	UPROPERTY(EditDefaultsOnly)
-	UAISenseConfig_Sight* SightConfig;
-protected:
-	// AIControllerのPawn所持
-	virtual void OnPossess(class APawn* InPawn) override;
+	// 知覚機能コンポーネント
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UAIPerceptionComponent> AIPerception;
 
-	// AIControllerのPawn所持解除
-	virtual void OnUnPossess() override;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UAISenseConfig_Sight> SightConfig;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
+	TObjectPtr<UBehaviorTree> BehaviorTree;
 
-	virtual void BeginPlay() override;
+	// 視覚に関するパラメータ（BPで設定）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception", meta = (DisplayName = "Sight Radius"))
+	float SightRadius = 2000.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = AI)
-	class UBehaviorTree* BehaviorTree;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception", meta = (DisplayName = "Lose Sight Radius"))
+	float LoseSightRadius = 2500.0f;
 
-	FORCEINLINE UBehaviorTreeComponent* GetBehaviorComp() const { return BehaviorComp; }
-	FORCEINLINE UBlackboardComponent* GetBlackboardComp() const { return BlackboardComp; }
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception", meta = (DisplayName = "Vision Angle Degrees"))
+	float PeripheralVisionAngleDegrees = 90.0f;
+
+	// ブラックボードで使用するキーの名前
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Blackboard")
+	FName PlayerKeyName = "TargetActor";
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Blackboard")
+	FName FindKeyName = "bIsFind";
+
+private:
+
+	TObjectPtr<AEnemyBaseCharacter> OwnerEnemy;
 };

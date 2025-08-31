@@ -1,61 +1,93 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "BTT/BTT_RoamingPointIndex.h"
 #include "TopDownGame_1/EnemyBaseCharacter.h"
 #include "TopDownGame_1/AIC_EnemyBase.h"
-#include "TopDownGame_1/Public/EnemyRoamingPoint.h"
+#include "RoomBase.h"
+#include "Components/ActorComponent.h"
+#include "EnemyRoamingPointComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 
 UBTT_RoamingPointIndex::UBTT_RoamingPointIndex(FObjectInitializer const& ObjectInitializer)
 {
-	// BehaviorTreeのタスク欄に表示する名前
-	NodeName = TEXT("Roaming Point Index");
+    NodeName = TEXT("Roaming Point Index");
 }
 
 EBTNodeResult::Type UBTT_RoamingPointIndex::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-	if (AAIC_EnemyBase* AIC = Cast<AAIC_EnemyBase>(OwnerComp.GetAIOwner()))
-	{
-		if (AEnemyBaseCharacter* enemy = Cast<AEnemyBaseCharacter>(AIC->GetPawn()))
-		{
-			if (auto* const BB_Component = OwnerComp.GetBlackboardComponent())
-			{
-				// 徘徊要素の全ての数を取得
-				int32 const AllPoints = enemy->GetRoamingPointActor()->PointNum();
-				// 要素数の最低値
-				int32 const MinIndex = 0;
-				// 要素数の最高値
-				int32 const MaxIndex = AllPoints - 1;
-				// 現在の要素番号
-				int32 Index = BB_Component->GetValueAsInt(GetSelectedBlackboardKey());
+    // AIController取得
+    if (AAIC_EnemyBase* AIC = Cast<AAIC_EnemyBase>(OwnerComp.GetAIOwner()))
+    {
+        // Enemy取得
+        if (AEnemyBaseCharacter* Enemy = Cast<AEnemyBaseCharacter>(AIC->GetPawn()))
+        {
+            // Blackboard取得
+            if (UBlackboardComponent* BB_Component = OwnerComp.GetBlackboardComponent())
+            {
+                // 親Room取得
+                if (ARoomBase* Room = Enemy->GetParentRoom())
+                {
+                    // Room内のすべての RoamingPointComponent を取得
+                    TArray<UEnemyRoamingPointComponent*> AllPointsInRoom;
+                    Room->GetComponents<UEnemyRoamingPointComponent>(AllPointsInRoom);
+                  
+                    int32 const EnemyRoamingID = Enemy->GetRoamingID();
 
-				// 逆方向がtrueの場合
-				if (bDirectional)
-				{
-					// 現在の要素番号が最大値 && 順方向に進んでいたら 
-					if (Index >= MaxIndex && Direction == EDirectionType::Forward)
-					{
-						// 逆方向へ
-						Direction = EDirectionType::Reverse;
-					}
-					// 現在の要素番号が最小値 && 逆方向に進んでいたら
-					else if (Index == MinIndex && Direction == EDirectionType::Reverse)
-					{
-						// 順方向へ
-						Direction = EDirectionType::Forward;
-					}
-				}
+                    // RoamingIDが一致するポイントのみ抽出する
+                    TArray<UEnemyRoamingPointComponent*> RoamingPoints;
+                    for (UEnemyRoamingPointComponent* Point : AllPointsInRoom)
+                    {
+                        if (Point && Point->GetRoamingID() == EnemyRoamingID)
+                        {
+                            RoamingPoints.Add(Point);
+                        }
+                    }
 
-				// 順方向の場合は要素順にポイント番号を設定　(0→1→2)
-				// 逆方向の場合は要素番号を逆にポイント番号を設定　(2→1→0)
-				BB_Component->SetValueAsInt(GetSelectedBlackboardKey(),
-					(Direction == EDirectionType::Forward ? ++Index : --Index) % AllPoints);
+                    int32 const AllPoints = RoamingPoints.Num();
+                    if (AllPoints <= 0)
+                    {
+                        // 一致する徘徊ポイントが無ければ失敗
+                        FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+                        return EBTNodeResult::Failed;
+                    }
 
-				FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
-				return EBTNodeResult::Succeeded;
-			}
-		}
-	}
+                    int32 const MinIndex = 0;
+                    int32 const MaxIndex = AllPoints - 1;
 
-	return EBTNodeResult::Failed;
+                    // 現在の徘徊要素番号
+                    int32 Index = BB_Component->GetValueAsInt(GetSelectedBlackboardKey());
+
+                    // 逆方向チェック
+                    if (bDirectional)
+                    {
+                        if (Index >= MaxIndex && Direction == EDirectionType::Forward)
+                        {
+                            Direction = EDirectionType::Reverse;
+                        }
+                        else if (Index <= MinIndex && Direction == EDirectionType::Reverse)
+                        {
+                            Direction = EDirectionType::Forward;
+                        }
+                    }
+
+                    // 次の index を設定
+                    if (Direction == EDirectionType::Forward)
+                    {
+                        Index = (Index + 1) % AllPoints;
+                    }
+                    else
+                    {
+                        Index = (Index - 1 + AllPoints) % AllPoints; // 負の値を回避
+                    }
+
+                    BB_Component->SetValueAsInt(GetSelectedBlackboardKey(), Index);
+
+                    FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+                    return EBTNodeResult::Succeeded;
+                }
+            }
+        }
+    }
+
+    return EBTNodeResult::Failed;
 }
